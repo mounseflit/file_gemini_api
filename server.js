@@ -1,5 +1,5 @@
 const express = require('express');
-const cors = require('cors'); // Import the cors package
+const cors = require('cors');
 const multer = require('multer');
 const { GoogleAIFileManager, GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
@@ -9,13 +9,13 @@ const port = process.env.PORT || 3000;
 
 // Initialize CORS middleware
 app.use(cors({
-  origin: 'http://127.0.0.1:5500', // Allow requests from this origin
+  origin: 'http://127.0.0.1:5500', // Adjust this to match your frontend's origin
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type']
 }));
 
-// Initialize file upload middleware for memory storage
-const storage = multer.memoryStorage(); // Use memory storage instead of disk storage
+// Initialize multer with memory storage
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 // Initialize Google AI File Manager and GenerativeAI with your API key
