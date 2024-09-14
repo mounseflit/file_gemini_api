@@ -1,7 +1,8 @@
 const express = require('express');
-const cors = require('cors');
+const cors = require('cors'); // Import the cors package
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
 
@@ -9,7 +10,11 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Initialize CORS middleware
-app.use(cors());
+app.use(cors({
+  origin: 'http://127.0.0.1:5500', // Allow requests from this origin
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
 
 // Initialize file upload middleware
 const upload = multer({ dest: 'uploads/' });
@@ -29,7 +34,7 @@ app.post('/upload', upload.single('pdf'), async (req, res) => {
     // Prepare file data for Gemini API
     const filePart = {
       inlineData: {
-        data: Buffer.from(require('fs').readFileSync(filePath)).toString('base64'),
+        data: Buffer.from(fs.readFileSync(filePath)).toString('base64'),
         mimeType: 'application/pdf',
       },
     };
@@ -39,7 +44,7 @@ app.post('/upload', upload.single('pdf'), async (req, res) => {
     const result = await model.generateContent([filePart, { text: 'Can you summarize this document as a bulleted list?' }]);
 
     // Clean up uploaded file
-    require('fs').unlinkSync(filePath);
+    fs.unlinkSync(filePath);
 
     // Respond with the summary
     res.json({ summary: result.response.text() });
