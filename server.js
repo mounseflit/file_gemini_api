@@ -8,7 +8,11 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Initialize CORS middleware
-app.use(cors());
+app.use(cors({
+  origin: 'http://127.0.0.1:5500', // Allow requests from this origin
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
 
 // Initialize file upload middleware for memory storage
 const storage = multer.memoryStorage(); // Use memory storage instead of disk storage
