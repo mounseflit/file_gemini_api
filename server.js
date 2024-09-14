@@ -1,63 +1,55 @@
-// Import required modules
-import express from 'express';
-import multer from 'multer';
-import { GoogleAIFileManager, GoogleGenerativeAI } from '@google/generative-ai/server';
-import dotenv from 'dotenv';
-import fs from 'fs';
-
-// Load environment variables (API_KEY)
-dotenv.config();
+const express = require('express');
+const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = process.env.PORT || 3000;
 
-// Multer setup for handling file uploads
+// Initialize CORS middleware
+app.use(cors());
+
+// Initialize file upload middleware
 const upload = multer({ dest: 'uploads/' });
 
-// Initialize Google AI File Manager and Generative AI models
-const fileManager = new GoogleAIFileManager(process.env.API_KEY);
+// Initialize GoogleGenerativeAI with your API key
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 
-// Route for uploading and processing the document
-app.post('/upload', upload.single('document'), async (req, res) => {
+app.post('/upload', upload.single('pdf'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
   try {
-    // File upload handling
-    const { path, originalname, mimetype } = req.file;
+    // Get the uploaded file's path
+    const filePath = path.join(__dirname, 'uploads', req.file.filename);
 
-    // Upload the PDF to Gemini File API
-    const uploadResponse = await fileManager.uploadFile(path, {
-      mimeType: mimetype,
-      displayName: originalname,
-    });
-
-    // Store file URI from the upload response
-    const fileUri = uploadResponse.file.uri;
-
-    // Use the fileUri to prompt the Gemini API for content generation
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-    const result = await model.generateContent([
-      {
-        fileData: {
-          mimeType: mimetype,
-          fileUri: fileUri,
-        },
+    // Prepare file data for Gemini API
+    const filePart = {
+      inlineData: {
+        data: Buffer.from(require('fs').readFileSync(filePath)).toString('base64'),
+        mimeType: 'application/pdf',
       },
-      { text: 'Can you summarize this document?' },
-    ]);
+    };
 
-    // Delete local file after upload
-    fs.unlinkSync(path);
+    // Use Gemini API to process the document
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const result = await model.generateContent([filePart, { text: 'Can you summarize this document as a bulleted list?' }]);
 
-    // Return the generated summary
+    // Clean up uploaded file
+    require('fs').unlinkSync(filePath);
+
+    // Respond with the summary
     res.json({ summary: result.response.text() });
+
   } catch (error) {
     console.error('Error processing document:', error);
-    res.status(500).json({ error: 'Failed to process the document' });
+    res.status(500).json({ error: 'Failed to process document' });
   }
 });
 
-// Start the Express server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
